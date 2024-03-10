@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+<body onload="init()">
+    <canvas id="glCanvas" width="640" height="480"></canvas>
+
+    <script id="shaderVs" type="x-shader/x-vertex">
+        attribute vec4 coordinates;
+        void main() {
+            gl_Position = coordinates;
+            gl_PointSize = 3.0;
+        }
+    </script>
+
+    <script id="shaderFs" type="x-shader/x-fragment">
+        precision mediump float;
+        uniform vec4 fragColor;
+        void main() {
+            gl_FragColor = fragColor;
+        }
+    </script>
+
+    <script>
+        var gl;
+        var shaderProgram;
+        var vertexShader;
+        var fragmentShader;
+        var colorUniform;
+
+        var points = [];
+        var triangles = [];
+        var colors = [
+            [1.0, 0.0, 0.0, 1.0], // Rojo
+            [0.0, 1.0, 0.0, 1.0], // Verde
+            [0.0, 0.0, 1.0, 1.0]  // Azul
+        ];
+        var triangleColors = []; // Almacenar los colores de los triángulos pintados
+        var currentColorIndex = 0;
+
+        function init() {
+            var canvas = document.getElementById("glCanvas");
+            gl = canvas.getContext("webgl");
+
+            if (!gl) {
+                console.log("Failed to get the rendering context for WebGL");
+                return;
+            }
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            var vs_source = document.getElementById('shaderVs').innerHTML;
+            var fs_source = document.getElementById('shaderFs').innerHTML;
+
+            initShaders(vs_source, fs_source);
+
+            canvas.addEventListener('click', function(event) {
+                var x = event.offsetX / canvas.width * 2 - 1;
+                var y = -(event.offsetY / canvas.height * 2 - 1);
+
+                points.push(x, y);
+
+                if (points.length % 6 === 0) { // Si hay suficientes puntos para formar un triángulo
+                    drawTriangle();
+                    currentColorIndex = (currentColorIndex + 1) % colors.length;
+                } else {
+                    drawPoint(x, y);
+                }
+            });
+        }
+
+        function initShaders(vs_source, fs_source) {
+            vertexShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertexShader, vs_source);
+            gl.compileShader(vertexShader);
+
+            if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                alert("Error compiling vertex shader: " + gl.getShaderInfoLog(vertexShader));
+                return;
+            }
+
+            fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragmentShader, fs_source);
+            gl.compileShader(fragmentShader);
+
+            if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                alert("Error compiling fragment shader: " + gl.getShaderInfoLog(fragmentShader));
+                return;
+            }
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert("Unable to initialize the shader program");
+                return;
+            }
+
+            gl.useProgram(shaderProgram);
+
+            colorUniform = gl.getUniformLocation(shaderProgram, "fragColor");
+        }
+
+        function drawPoint(x, y) {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            var positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x, y]), gl.STATIC_DRAW);
+
+            var coord = gl.getAttribLocation(shaderProgram, 'coordinates');
+            gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(coord);
+
+            gl.uniform4fv(colorUniform, colors[currentColorIndex]);
+            gl.drawArrays(gl.POINTS, 0, 1);
+        }
+
+        function drawTriangle() {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            var positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(points), gl.STATIC_DRAW);
+
+            var coord = gl.getAttribLocation(shaderProgram, 'coordinates');
+            gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(coord);
+
+            var currentColor = colors[currentColorIndex];
+            triangleColors.push(currentColor);
+
+            gl.uniform4fv(colorUniform, currentColor);
+            gl.drawArrays(gl.TRIANGLES, 0, 3); // Dibujar el último triángulo
+
+            triangles.push(points.slice(-6)); // Guardar los últimos puntos para el próximo triángulo
+            points.splice(0, 2); // Eliminar el primer punto para mantener solo los dos últimos puntos para el próximo triángulo
+
+            // Dibujar todos los triángulos almacenados con sus colores
+            for (var i = 0; i < triangles.length; i++) {
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangles[i]), gl.STATIC_DRAW);
+                gl.uniform4fv(colorUniform, triangleColors[i]);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+            }
+        }
+    </script>
+</body>
+
+</html>

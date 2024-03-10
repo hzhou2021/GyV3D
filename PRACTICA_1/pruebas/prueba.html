@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 
-
 <body onload="init()">
     <canvas id="glCanvas" width="640" height="480"></canvas>
 
@@ -59,7 +58,7 @@
 
                 points.push(x, y);
 
-                if (points.length % 6 === 0) { // Cada triángulo tiene 3 puntos (x, y, z)
+                if (points.length % 6 === 0) { // Si hay suficientes puntos para formar un triángulo
                     drawTriangle();
                     currentColorIndex = (currentColorIndex + 1) % colors.length;
                 } else {
@@ -129,11 +128,12 @@
             gl.enableVertexAttribArray(coord);
 
             gl.uniform4fv(colorUniform, colors[currentColorIndex]);
-            gl.drawArrays(gl.TRIANGLES, 0, points.length / 2);
+            gl.drawArrays(gl.TRIANGLES, 0, 3); // Dibujar el último triángulo
+
+            // Eliminar el primer punto para mantener solo los dos últimos puntos para el próximo triángulo
+            points.splice(0, 2);
         }
     </script>
 </body>
 
 </html>
-
-
