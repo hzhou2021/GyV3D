@@ -185,13 +185,13 @@
           roofTranslationX += step;
           break;
         case "z":
-          roofRotation += step; // Rotación positiva para el tejado
-          break;
-        case "x":
           rotationZN -= step; // Rotación negativa para la columna izquierda
           break;
-        case "c":
+        case "x":
           rotationZP += step; // Rotación positiva para la columna derecha
+          break;
+        case "c":
+          roofRotation += step; // Rotación positiva para el tejado
           break;
       }
       drawScene();
@@ -251,4 +251,3 @@
 </body>
 
 </html>
-

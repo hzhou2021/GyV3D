@@ -36,9 +36,6 @@
     var scaleX = 1.0;
     var scaleY = 1.0;
     var rotationZ = 0.0;
-    var rotationZN = 0.0;
-    var rotationZP = 0.0;
-    var roofRotation = 0.0; // Nueva variable para controlar la rotación del tejado
     var step = 0.01;
 
     function init() {
@@ -185,13 +182,16 @@
           roofTranslationX += step;
           break;
         case "z":
-          roofRotation += step; // Rotación positiva para el tejado
+          // Giro positivo del tejado según el eje Y
+          rotateRoofPositiveY();
           break;
         case "x":
-          rotationZN -= step; // Rotación negativa para la columna izquierda
+          // Giro negativo de la columna izquierda según el eje Z
+          rotateLeftColumnNegativeZ();
           break;
         case "c":
-          rotationZP += step; // Rotación positiva para la columna derecha
+          // Giro positivo de la columna derecha según el eje Z
+          rotateRightColumnPositiveZ();
           break;
       }
       drawScene();
@@ -222,13 +222,6 @@
         roofTranslationX, roofTranslationY, 0.0, 1.0
       ];
 
-      // Aplicar rotación sobre el eje Z para la columna izquierda
-      mat4.rotateZ(leftColumnMatrix, leftColumnMatrix, rotationZN);
-      // Aplicar rotación sobre el eje Z para la columna derecha
-      mat4.rotateZ(rightColumnMatrix, rightColumnMatrix, rotationZP);
-      // Aplicar rotación sobre el eje Y para el tejado
-      mat4.rotateY(roofMatrix, roofMatrix, roofRotation);
-
       var matrixLocation = gl.getUniformLocation(shaderProgram, "u_matrix");
 
       // Dibujar columna izquierda
@@ -242,6 +235,33 @@
       // Dibujar tejado
       gl.uniformMatrix4fv(matrixLocation, false, roofMatrix);
       gl.drawArrays(gl.TRIANGLES, 12, 6);
+    }
+
+    function rotateRoofPositiveY() {
+      var roofRotationMatrix = glMatrix.mat4.create();
+      glMatrix.mat4.fromYRotation(roofRotationMatrix, Math.PI / 18); // Rotación positiva del tejado en 10 grados
+      roofTranslationX = 0.0; // Asegurar que el tejado se mantiene en su posición original
+      roofTranslationY = 0.1;
+      roofTranslationX -= step; // Compensar la traslación realizada por la tecla
+      glMatrix.mat4.translate(roofRotationMatrix, roofRotationMatrix, [roofTranslationX, roofTranslationY, 0.0]); // Aplicar traslación compensatoria
+      roofTranslationX += step; // Restaurar la traslación original
+      glMatrix.mat4.translate(roofRotationMatrix, roofRotationMatrix, [-roofTranslationX, -roofTranslationY, 0.0]); // Aplicar traslación inversa
+      // Aplicar la rotación al tejado
+      glMatrix.mat4.multiply(roofMatrix, roofMatrix, roofRotationMatrix);
+    }
+
+    function rotateLeftColumnNegativeZ() {
+      var leftColumnRotationMatrix = glMatrix.mat4.create();
+      glMatrix.mat4.fromZRotation(leftColumnRotationMatrix, -Math.PI / 18); // Rotación negativa de la columna izquierda en 10 grados
+      // Aplicar la rotación a la columna izquierda
+      glMatrix.mat4.multiply(leftColumnMatrix, leftColumnMatrix, leftColumnRotationMatrix);
+    }
+
+    function rotateRightColumnPositiveZ() {
+      var rightColumnRotationMatrix = glMatrix.mat4.create();
+      glMatrix.mat4.fromZRotation(rightColumnRotationMatrix, Math.PI / 18); // Rotación positiva de la columna derecha en 10 grados
+      // Aplicar la rotación a la columna derecha
+      glMatrix.mat4.multiply(rightColumnMatrix, rightColumnMatrix, rightColumnRotationMatrix);
     }
 
     function updateStep() {

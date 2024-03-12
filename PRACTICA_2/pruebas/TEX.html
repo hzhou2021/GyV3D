@@ -36,9 +36,6 @@
     var scaleX = 1.0;
     var scaleY = 1.0;
     var rotationZ = 0.0;
-    var rotationZN = 0.0;
-    var rotationZP = 0.0;
-    var roofRotation = 0.0; // Nueva variable para controlar la rotación del tejado
     var step = 0.01;
 
     function init() {
@@ -185,13 +182,13 @@
           roofTranslationX += step;
           break;
         case "z":
-          roofRotation += step; // Rotación positiva para el tejado
+          rotationZ += step;
           break;
         case "x":
-          rotationZN -= step; // Rotación negativa para la columna izquierda
+          rotationZ -= step;
           break;
         case "c":
-          rotationZP += step; // Rotación positiva para la columna derecha
+          // No es necesario realizar ninguna acción para "c" en este momento
           break;
       }
       drawScene();
@@ -222,12 +219,10 @@
         roofTranslationX, roofTranslationY, 0.0, 1.0
       ];
 
-      // Aplicar rotación sobre el eje Z para la columna izquierda
-      mat4.rotateZ(leftColumnMatrix, leftColumnMatrix, rotationZN);
-      // Aplicar rotación sobre el eje Z para la columna derecha
-      mat4.rotateZ(rightColumnMatrix, rightColumnMatrix, rotationZP);
-      // Aplicar rotación sobre el eje Y para el tejado
-      mat4.rotateY(roofMatrix, roofMatrix, roofRotation);
+      // Aplicar rotación sobre el eje Z
+      mat4.rotateZ(leftColumnMatrix, leftColumnMatrix, rotationZ);
+      mat4.rotateZ(rightColumnMatrix, rightColumnMatrix, rotationZ);
+      mat4.rotateZ(roofMatrix, roofMatrix, rotationZ);
 
       var matrixLocation = gl.getUniformLocation(shaderProgram, "u_matrix");
 
@@ -251,4 +246,3 @@
 </body>
 
 </html>
-

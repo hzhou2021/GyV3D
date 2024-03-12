@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL App</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body onload="init()">
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+    <br>
+    Step: <input type="text" value="0.01" id="step" onchange="updateStep()">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/3.4.1/gl-matrix-min.js"></script>
+    <script>
+        var gl;
+        var verticesBuffer;
+        var shaderProgram;
+        var leftColumnTranslationX = -0.4;
+        var leftColumnTranslationY = 0.0;
+        var rightColumnTranslationX = 0.4;
+        var rightColumnTranslationY = 0.0;
+        var roofTranslationX = 0.0;
+        var roofTranslationY = 0.1;
+        var scaleX = 1.0;
+        var scaleY = 1.0;
+        var rotationZ = 0.0;
+        var step = 0.01;
+        var keyPressed = ""; // Variable para almacenar la tecla presionada
+
+        function init() {
+            var canvas = document.getElementById("myCanvas");
+            gl = canvas.getContext("webgl");
+
+            if (!gl) {
+                console.error("WebGL no está disponible.");
+                return;
+            }
+
+            var vertices = [
+                // Columna izquierda
+                -0.25, -0.5,
+                -0.25, 0.5,
+                -0.05, 0.5,
+                -0.25, -0.5,
+                -0.05, 0.5,
+                -0.05, -0.5,
+                // Columna derecha
+                0.05, -0.5,
+                0.25, -0.5,
+                0.05, 0.5,
+                0.05, 0.5,
+                0.25, 0.5,
+                0.25, -0.5,
+                // Tejado
+                -0.9, 0.4, // Punto inferior izquierdo del tejado
+                0, 0.9, // Punto superior del tejado
+                0.9, 0.4, // Punto inferior derecho del tejado
+                // Conexión izquierda-derecha del tejado
+                -0.9, 0.5,
+                0, 0.5,
+                0.9, 0.5
+            ];
+
+            verticesBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            var vertexShaderSource = `
+            attribute vec2 a_position;
+            uniform mat4 u_matrix;
+            void main() {
+                gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+            var fragmentShaderSource = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0); // Amarillo
+            }
+        `;
+
+            var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+            gl.useProgram(shaderProgram);
+
+            var positionAttributeLocation = gl.getAttribLocation(shaderProgram, "a_position");
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            drawScene();
+        }
+
+        function createShader(gl, type, source) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error("Error compiling shader:", gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        document.onkeydown = function(ev) {
+            keyPressed = ev.key; // Almacena la tecla presionada
+
+            switch (ev.key) {
+                case "ArrowLeft":
+                    leftColumnTranslationX -= step;
+                    rightColumnTranslationX -= step;
+                    roofTranslationX -= step;
+                    break;
+                case "ArrowRight":
+                    leftColumnTranslationX += step;
+                    rightColumnTranslationX += step;
+                    roofTranslationX += step;
+                    break;
+                case "ArrowUp":
+                    leftColumnTranslationY += step;
+                    rightColumnTranslationY += step;
+                    roofTranslationY += step;
+                    break;
+                case "ArrowDown":
+                    leftColumnTranslationY -= step;
+                    rightColumnTranslationY -= step;
+                    roofTranslationY -= step;
+                    break;
+                case "PageDown":
+                    // Reducir uniformemente el tamaño de los elementos
+                    var scaleDownFactor = 1 + step;
+                    scaleX /= scaleDownFactor;
+                    scaleY /= scaleDownFactor;
+
+                    // Ajustar las coordenadas de traslación proporcionalmente
+                    leftColumnTranslationX /= scaleDownFactor;
+                    leftColumnTranslationY /= scaleDownFactor;
+                    rightColumnTranslationX /= scaleDownFactor;
+                    rightColumnTranslationY /= scaleDownFactor;
+                    roofTranslationX /= scaleDownFactor;
+                    roofTranslationY /= scaleDownFactor;
+                    break;
+                case "PageUp":
+                    // Aumentar uniformemente el tamaño de los elementos
+                    var scaleUpFactor = 1 + step;
+                    scaleX *= scaleUpFactor;
+                    scaleY *= scaleUpFactor;
+
+                    // Ajustar las coordenadas de traslación proporcionalmente
+                    leftColumnTranslationX *= scaleUpFactor;
+                    leftColumnTranslationY *= scaleUpFactor;
+                    rightColumnTranslationX *= scaleUpFactor;
+                    rightColumnTranslationY *= scaleUpFactor;
+                    roofTranslationX *= scaleUpFactor;
+                    roofTranslationY *= scaleUpFactor;
+                    break;
+                case "w":
+                    roofTranslationY += step;
+                    break;
+                case "a":
+                    roofTranslationX -= step;
+                    break;
+                case "s":
+                    roofTranslationY -= step;
+                    break;
+                case "d":
+                    roofTranslationX += step;
+                    break;
+                case "x":
+                    // Calcular la matriz de rotación alrededor del eje Z
+                    var angle = Math.PI / 180; // Convertir a radianes
+                    var rotationMatrix = [
+                        Math.cos(angle), -Math.sin(angle), 0.0, 0.0,
+                        Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                        0.0, 0.0, 1.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0
+                    ];
+
+                    // Aplicar la matriz de rotación a la columna izquierda
+                    leftColumnMatrix2 = glMatrix.mat4.multiply(glMatrix.mat4.create(), rotationMatrix, leftColumnMatrix);
+                    break;
+            }
+            drawScene(); // Llamar a drawScene() después de cada cambio
+        };
+
+        function drawScene() {
+            gl.clearColor(0.0, 0.0, 1.0, 1.0); // Establecer el color de fondo azul
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            var leftColumnMatrix2 = [
+                0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ];
+
+            var leftColumnMatrix = [
+                scaleX, 0.0, 0.0, 0.0,
+                0.0, scaleY, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                leftColumnTranslationX, leftColumnTranslationY, 0.0, 1.0
+            ];
+
+            var rightColumnMatrix = [
+                scaleX, 0.0, 0.0, 0.0,
+                0.0, scaleY, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                rightColumnTranslationX, rightColumnTranslationY, 0.0, 1.0
+            ];
+
+            var roofMatrix = [
+                scaleX, 0.0, 0.0, 0.0,
+                0.0, scaleY, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                roofTranslationX, roofTranslationY, 0.0, 1.0
+            ];
+            
+            if (keyPressed === "x") {
+                // Calcular la matriz de rotación alrededor del eje Z
+                var angle = Math.PI / 180; // Convertir a radianes
+                var rotationMatrix = [
+                    Math.cos(angle), -Math.sin(angle), 0.0, 0.0,
+                    Math.sin(angle), Math.cos(angle), 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0
+                ];
+
+                // Aplicar la matriz de rotación a la columna izquierda
+                leftColumnMatrix2 = glMatrix.mat4.multiply(glMatrix.mat4.create(), rotationMatrix, leftColumnMatrix);
+            }
+
+            var matrixLocation = gl.getUniformLocation(shaderProgram, "u_matrix");
+
+            // Multiplicar leftColumnMatrix por leftColumnMatrix2
+            var resultMatrix = glMatrix.mat4.create();
+            glMatrix.mat4.multiply(resultMatrix, leftColumnMatrix, leftColumnMatrix2);
+
+            // Dibujar columna izquierda con la matriz resultante
+            gl.uniformMatrix4fv(matrixLocation, false, resultMatrix);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            // Dibujar columna derecha
+            gl.uniformMatrix4fv(matrixLocation, false, rightColumnMatrix);
+            gl.drawArrays(gl.TRIANGLES, 6, 6);
+
+            // Dibujar tejado
+            gl.uniformMatrix4fv(matrixLocation, false, roofMatrix);
+            gl.drawArrays(gl.TRIANGLES, 12, 6);
+        }
+
+        function updateStep() {
+            step = parseFloat(document.getElementById("step").value);
+        }
+    </script>
+</body>
+
+</html>
