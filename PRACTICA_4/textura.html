@@ -22,11 +22,17 @@
     precision mediump float;
     uniform sampler2D u_Sampler0;
     uniform sampler2D u_Sampler1;
+    uniform float Carga;
     varying vec2 v_TexCoord;
     void main(void) {
         vec4 color0 = texture2D(u_Sampler0, v_TexCoord);
         vec4 color1 = texture2D(u_Sampler1, v_TexCoord);
-        gl_FragColor = color0 * color1;
+        if (Carga == 0.0) {
+            gl_FragColor = color0 * color1;
+        } else {
+            gl_FragColor = color0;
+        }
+        
     }
 </script>
 
@@ -307,13 +313,15 @@
         image0.src = 'portal.jpg';
         var image1 = new Image();
         image1.src = 'light.jpg';
+        var CargaImage = gl.getUniformLocation(gl.program, "Carga");
 
         if (Decoration === "No") {
+            gl.uniform1f(CargaImage, 1.0);
             image0.onload = function() {
                 loadTexture(gl, "u_Sampler0", image0, 0, true);
-                loadTexture(gl, "u_Sampler1", image0, 1, true);
             }
         } else if (Decoration === "Yes") {
+            gl.uniform1f(CargaImage, 0.0);
             image0.onload = function () {
                 loadTexture(gl, "u_Sampler0", image0, 0, true);
                 image1.onload = function () {
