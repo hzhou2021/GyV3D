@@ -28,6 +28,7 @@
         var colorUniform;
 
         var points = [];
+        var allPoints = []; // Lista para almacenar todos los puntos dibujados
         var triangles = [];
         var colors = [
             [1.0, 0.0, 0.0, 1.0], // Rojo
@@ -54,7 +55,7 @@
 
             initShaders(vs_source, fs_source);
 
-            canvas.addEventListener('click', function(event) {
+            canvas.addEventListener('click', function (event) {
                 var x = event.offsetX / canvas.width * 2 - 1;
                 var y = -(event.offsetY / canvas.height * 2 - 1);
 
@@ -104,18 +105,20 @@
         }
 
         function drawPoint(x, y) {
-            gl.clear(gl.COLOR_BUFFER_BIT);
+            allPoints.push(x, y); // Agregar el nuevo punto a la lista de todos los puntos
+
+            gl.clear(gl.COLOR_BUFFER_BIT); // Limpiar el lienzo
 
             var positionBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x, y]), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allPoints), gl.STATIC_DRAW);
 
             var coord = gl.getAttribLocation(shaderProgram, 'coordinates');
             gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(coord);
 
             gl.uniform4fv(colorUniform, colors[currentColorIndex]);
-            gl.drawArrays(gl.POINTS, 0, 1);
+            gl.drawArrays(gl.POINTS, 0, allPoints.length / 2); // Dibujar todos los puntos
         }
 
         function drawTriangle() {
