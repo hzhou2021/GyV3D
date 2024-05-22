@@ -43,7 +43,7 @@
     uniform float Carga;
 
     void main(void) {
-        float nDotL = max(dot(u_LightDirection, normalize(v_modo.xyz)), 0.0);
+        float nDotL = max(dot(u_LightDirection, normalize(v_modo.xyz)), 0.4);
 
         vec4 color0 = texture2D(u_Sampler0, v_TexCoord);
         vec4 color1 = texture2D(u_Sampler1, v_TexCoord);
@@ -102,7 +102,7 @@
 
         document.addEventListener('wheel', function (event) {
             if (projectionType === "perspective") {
-                z = event.wheelDelta > 0 ? z - 1 : z + 1;
+                z = event.wheelDelta > 0 ? z + 1 : z - 1;
                 var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix");
                 var vMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), [0, 0, z], [0, 0, 0], [0, 1, 0]);
                 gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);
@@ -389,8 +389,8 @@
                 var u = (j / LONGITUDE_BANDS);
                 var v = (i / LATITUDE_BANDS);
 
-                vertexesAndTextures.push(u);
-                vertexesAndTextures.push(v);
+                vertexesAndTextures.push(0.5-u);
+                vertexesAndTextures.push(1-v);
 
                 vertexesAndTextures.push(x);
                 vertexesAndTextures.push(y);

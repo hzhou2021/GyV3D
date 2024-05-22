@@ -56,7 +56,7 @@
 
         document.addEventListener('wheel', function (event) {
             if (projectionType === "perspective") {
-                z = event.wheelDelta > 0 ? z - 1 : z + 1;
+                z = event.wheelDelta > 0 ? z + 1 : z - 1;
                 var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix");
                 var vMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), [0, 0, z], [0, 0, 0], [0, 1, 0]);
                 gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);

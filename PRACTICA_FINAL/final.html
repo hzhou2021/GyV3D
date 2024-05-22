@@ -1,0 +1,622 @@
+<!--
+Autor: Hao Zhou
+Partes implementadas:
+
+- Funcionalidad básica
+
+- Funcionalidad avanzada:  
+    .Puntuación
+
+- Mejoras:      
+    
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pac-Man</title>
+</head>
+
+<body onload="init()">
+
+    <div id="lifeCount">Lives: 3</div>
+    <div id="scoreCount">Score: 0</div>
+
+    <div id="endGame" class="overlay">
+        <div id="endGameMessage" class="message"></div>
+        <div id="scoreMessage" class="message"></div>
+        <button id="restart" class="button">Restart Game</button>
+    </div>
+
+</body>
+
+<style>
+    /* Para decorar */
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        text-align: center;
+    }
+
+    .message {
+        color: white;
+        font-size: 48px;
+        margin-top: 100px;
+    }
+
+    .button {
+        margin-top: 20px;
+        font-size: 24px;
+    }
+
+    #velocidadVariable,
+    #scoreCount,
+    #lifeCount {
+        display: inline-block;
+        margin-right: 20px;
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.148.0/three.min.js"></script>
+
+<script>
+    //Variables Globales
+    var score = 0;
+    var lives = 3;
+    var stepX = 0.4;
+    var stepY = 0.4;
+    var stepX_ghost1 = 0.1;
+    var stepY_ghost1 = 0.2;
+    var stepX_ghost2 = 0.1;
+    var stepY_ghost2 = 0.2;
+    var stepX_ghost3 = 0.1;
+    var stepY_ghost3 = 0.2;
+    var stepXghosts = [stepX_ghost1, stepX_ghost2, stepX_ghost3];
+    var stepYghosts = [stepX_ghost1, stepX_ghost2, stepX_ghost3];
+    var scoreSpheres = [];
+    var initialSpherePosition = { x: 0, y: -20, z: 1 };
+    var powerActive = false;
+    var direction = { x: -1, y: 0 };
+    var renderer = new THREE.WebGLRenderer();
+
+    // Añadir event listener para detectar las pulsaciones de teclas
+    document.addEventListener("keydown", function (event) {
+        // Verificar si lives es mayor que cero antes de procesar el evento del teclado
+        if (document.getElementById("endGame").style.display != "block") {
+            switch (event.key) {
+                case "ArrowLeft":
+                    direction.x = -1;
+                    direction.y = 0;
+                    break;
+                case "ArrowUp":
+                    direction.x = 0;
+                    direction.y = 1;
+                    break;
+                case "ArrowRight":
+                    direction.x = 1;
+                    direction.y = 0;
+                    break;
+                case "ArrowDown":
+                    direction.x = 0;
+                    direction.y = -1;
+                    break;
+            }
+        }
+    });
+
+    document.getElementById("restart").addEventListener("click", function () {
+        reset();
+    });
+
+    // Inicializa el juego
+    function init() {
+        var scene = new THREE.Scene();
+        var sceneWidth = window.innerWidth - 20;
+        var sceneHeight = window.innerHeight - 40;
+        var camera = new THREE.PerspectiveCamera(90, sceneWidth / sceneHeight, 0.01, 100);
+        var light = getLight();
+        scoreSpheres = [];
+        camera.position.set(0, 0, 30); // Set the initial Camera Position.
+        camera.lookAt(scene.position);
+        renderer.shadowMap.enabled = true;
+        renderer.setSize(sceneWidth, sceneHeight);
+        document.body.appendChild(renderer.domElement);
+
+        //map
+        var leftBorder = getBorder("left", 1, 50, 4, -25, 0, 0);
+        var rightBorder = getBorder("right", 1, 50, 4, 25, 0, 0);
+        var topBorder = getBorder("top", 49, 1, 4, 0, 24.5, 0);
+        var downBorder = getBorder("down", 49, 1, 4, 0, -24.5, 0);
+
+        var obstacleLeft = getBorder("left", 3, 1, 4, -20, 0, 0);
+        var obstacleRight = getBorder("left", 3, 1, 4, 20, 0, 0);
+        var obstacleTopLeft = getBorder("top", 3, 1, 4, -20, 0, 0);
+        var obstacleTopRight = getBorder("top", 3, 1, 4, 20, 0, 0);
+
+        var inside_1_Left = getBorder("left", 1, 40, 4, -14.5, 0, 0);
+        var inside_1_Right = getBorder("left", 1, 40, 4, 14.5, 0, 0);
+        var inside_1_topLeft = getBorder("left", 10, 1, 4, -10, 20, 0);
+        var inside_1_downLeft = getBorder("legt", 10, 1, 4, -10, -20, 0);
+        var inside_1_topRight = getBorder("right", 10, 1, 4, 10, 20, 0);
+        var inside_1_downRight = getBorder("right", 10, 1, 4, 10, -20, 0);
+        var inside_1_topRight2 = getBorder("top", 10, 1, 4, 10, 20, 0);
+        var inside_1_downRight2 = getBorder("top", 10, 1, 4, 10, -20, 0);
+        var inside_1_topLeft2 = getBorder("top", 10, 1, 4, -10, 20, 0);
+        var inside_1_downLeft2 = getBorder("top", 10, 1, 4, -10, -20, 0);
+
+        var inside_2_left1 = getBorder("left", 1, 10, 4, -9.5, 10, 0);
+        var inside_2_right1 = getBorder("left", 1, 10, 4, 9.5, 10, 0);
+        var inside_2_left2 = getBorder("left", 1, 10, 4, -9.5, -10, 0);
+        var inside_2_right2 = getBorder("left", 1, 10, 4, 9.5, -10, 0);
+        var inside_2_top = getBorder("top", 20, 1, 4, 0, 15, 0);
+        var inside_2_down = getBorder("down", 20, 1, 4, 0, -15, 0);
+
+        var centerLeft = getBorder("left", 1, 5, 4, -4.5, 0, 0);
+        var centerRight = getBorder("left", 1, 5, 4, 4.5, 0, 0);
+        var centerDown = getBorder("down", 10, 2, 4, 0, -2.5, 0);
+        var centerLeftTop = getBorder("top", 1, 5, 4, -4.5, 0, 0);
+        var centerRightTop = getBorder("top", 1, 5, 4, 4.5, 0, 0);
+
+        var floor = getFloor();
+
+        //initial sphere
+        var sphere = getSphere("sphere", 0, -20, 1);
+
+        //power-ups
+        var powerUp1 = getSphere("powerUp1", -20, 20, 1.2);
+        var powerUp2 = getSphere("powerUp2", 20, 20, 1.2);
+        var powerUp3 = getSphere("powerUp3", -20, -20, 1.2);
+        var powerUp4 = getSphere("powerUp4", 20, -20, 1.2);
+
+        var powers = [powerUp1, powerUp2, powerUp3, powerUp4];
+
+        //Ghost
+        var ghost1 = getSphere("ghost1", 0, -0.5, 1);
+        var ghost2 = getSphere("ghost2", -2.5, 0.5, 1);
+        var ghost3 = getSphere("ghost3", 2.5, 0.5, 1);
+
+        var ghosts = [ghost1, ghost2, ghost3];
+
+        scene.add(light);
+        scene.add(leftBorder);
+        scene.add(rightBorder);
+        scene.add(topBorder);
+        scene.add(downBorder);
+        scene.add(obstacleTopLeft);
+        scene.add(obstacleLeft);
+        scene.add(obstacleTopRight);
+        scene.add(obstacleRight);
+        scene.add(inside_1_topRight2);
+        scene.add(inside_1_downRight2);
+        scene.add(inside_1_Right);
+        scene.add(inside_1_downLeft2);
+        scene.add(inside_1_topLeft2);
+        scene.add(inside_1_Left);
+        scene.add(inside_2_top);
+        scene.add(inside_2_left1);
+        scene.add(inside_2_right1);
+        scene.add(inside_2_down);
+        scene.add(inside_2_left2);
+        scene.add(inside_2_right2);
+        scene.add(centerDown);
+        scene.add(centerLeft);
+        scene.add(centerRight);
+        scene.add(inside_1_topRight);
+        scene.add(inside_1_downRight);
+        scene.add(inside_1_topLeft);
+        scene.add(inside_1_downLeft);
+        scene.add(centerLeftTop);
+        scene.add(centerRightTop);
+
+        scene.add(floor);
+
+        scene.add(sphere);
+        scene.add(ghost1);
+        scene.add(ghost2);
+        scene.add(ghost3);
+
+        scene.add(powerUp1);
+        scene.add(powerUp2);
+        scene.add(powerUp3);
+        scene.add(powerUp4);
+
+        // Llamar a las funciones para generar las esferas de puntuación en fila y en columna
+        generationPointsRow(scene, 14, 3, -22, 22, 0);
+        generationPointsColumn(scene, 12, 3, -20, 20, 0);
+        generationPointsRow(scene, 6, 3.1, -11.8, 11.8, 0);
+
+
+        var borders = [leftBorder, rightBorder, topBorder, downBorder, obstacleTopLeft, obstacleLeft, obstacleTopRight, obstacleRight, inside_1_topRight2, inside_1_topLeft2, inside_1_downRight2, inside_1_Right, inside_1_downLeft2, inside_1_Left,
+            inside_2_top, inside_2_left1, inside_2_right1, inside_2_down, inside_2_left2, inside_2_right2, centerDown, centerLeft, centerRight, inside_1_topRight, inside_1_downRight, inside_1_topLeft, inside_1_downLeft, centerLeftTop, centerRightTop];
+
+        animate(sphere, ghosts, powers, borders, renderer, scene, camera);
+
+    }
+    
+    function animate(sphere, ghosts, powers, borders, renderer, scene, camera) {
+        updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts);
+        checkCollision(sphere, borders, ghosts, powers, scene);
+        checkCollisionGhosts(ghosts, borders);
+        movimientoGame(ghosts, stepXghosts, stepYghosts);
+
+        renderer.render(scene, camera);
+
+
+        if (lives <= 0) {
+            document.getElementById("endGame").style.display = "block";
+            document.getElementById("endGameMessage").innerText = "Game Over";
+            document.getElementById("scoreMessage").innerText = "Your Score: " + score;
+            direction.x = 0;
+            direction.y = 0;
+        }
+
+        if (ghosts.length <= 0) {
+            document.getElementById("endGame").style.display = "block";
+            document.getElementById("endGameMessage").innerText = "Winner";
+            document.getElementById("scoreMessage").innerText = "Your Score: " + score;
+            direction.x = 0;
+            direction.y = 0;
+        }
+
+        if (powers.length <= 0) {
+            document.getElementById("endGame").style.display = "block";
+            document.getElementById("endGameMessage").innerText = "Game Over";
+            document.getElementById("scoreMessage").innerText = "Your Score: " + score;
+            direction.x = 0;
+            direction.y = 0;
+        }
+
+        if (score == 64) {
+            document.getElementById("endGame").style.display = "block";
+            document.getElementById("endGameMessage").innerText = "Winner";
+            document.getElementById("scoreMessage").innerText = "Your Score: " + score;
+            direction.x = 0;
+            direction.y = 0;
+        }
+
+        renderer.setAnimationLoop(function () {
+            animate(sphere, ghosts, powers, borders, renderer, scene, camera);
+        });
+    }
+
+    function getLight() {
+        var light = new THREE.DirectionalLight();
+        light.position.set(4, 0, 4);
+        light.target.position.set(0, 0, 0); // Posición a la que apunta la luz
+        light.castShadow = true;
+        light.shadow.camera.near = 0;
+        light.shadow.camera.far = 50;
+        light.shadow.camera.left = -50;
+        light.shadow.camera.right = 50;
+        light.shadow.camera.top = 50;
+        light.shadow.camera.bottom = -50;
+        light.shadow.mapSize.width = 5000;
+        light.shadow.mapSize.height = 5000;
+        return light;
+    }
+
+    function movimientoGame(ghosts, stepXghosts, stepYghosts) {
+        for (var i = 0; i < ghosts.length && lives > 0; i++) {
+            ghosts[i].position.x += stepXghosts[i];
+            ghosts[i].position.y += stepYghosts[i];
+        }
+    }
+
+    function checkCollision(sphere, borders, ghosts, powers, scene) {
+        const originPosition = sphere.position.clone();
+        const positionAttribute = sphere.geometry.getAttribute('position');
+        const localVertex = new THREE.Vector3();
+        const globalVertex = new THREE.Vector3();
+
+        function performRaycast(targetObjects, distanceThreshold, callback) {
+            for (let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex++) {
+                localVertex.fromBufferAttribute(positionAttribute, vertexIndex);
+                globalVertex.copy(localVertex).applyMatrix4(sphere.matrixWorld);
+                const directionVector = globalVertex.sub(sphere.position);
+                const ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
+                const collisionResults = ray.intersectObjects(targetObjects);
+                if (collisionResults.length > 0 && collisionResults[0].distance < distanceThreshold) {
+                    callback(collisionResults[0]);
+                    break;
+                }
+            }
+        }
+
+        function handleGhostCollision(collisionResult) {
+            if (!powerActive) {
+                const ghostNames = ["ghost1", "ghost2", "ghost3"];
+                if (ghostNames.includes(collisionResult.object.name)) {
+                    if (lives >= 0) {
+                        lives--;
+                        sphere.position.copy(initialSpherePosition);
+                        direction.x = 0;
+                        direction.y = 0;
+                        document.getElementById("lifeCount").innerHTML = "Lives: " + lives;
+                    } else {
+                        document.getElementById("lifeCount").innerHTML = "Lives: " + 0;
+                    }
+
+                }
+            } else {
+                scene.remove(collisionResult.object);
+                const index = ghosts.indexOf(collisionResult.object);
+                if (index !== -1) {
+                    ghosts.splice(index, 1);
+                }
+            }
+        }
+
+        performRaycast(borders, 1, (collisionResult) => {
+            if (collisionResult.object.name === "left" || collisionResult.object.name === "right") {
+                direction.x = 0;
+            }
+            if (collisionResult.object.name === "down" || collisionResult.object.name === "top") {
+                direction.y = 0;
+            }
+        });
+
+        performRaycast(ghosts, 0.75, handleGhostCollision);
+
+        for (let i = 0; i < powers.length; i++) {
+            const powerUp = powers[i];
+            const distance = originPosition.distanceTo(powerUp.position);
+            if (distance < 2) {
+                scene.remove(powerUp);
+                powers.splice(i, 1);
+                powerActivation(ghosts);
+                break;
+
+            }
+        }
+
+        performRaycast(scoreSpheres, 0.5, (collisionResult) => {
+            scene.remove(collisionResult.object);
+            score++;
+            document.getElementById("scoreCount").innerHTML = "Score: " + score;
+            const index = scoreSpheres.indexOf(collisionResult.object);
+            if (index !== -1) {
+                scoreSpheres.splice(index, 1);
+            }
+        });
+    }
+
+
+    function checkCollisionGhosts(ghosts, borders) {
+        const localVertex = new THREE.Vector3();
+        const globalVertex = new THREE.Vector3();
+
+        function performRaycast(ghost, targetObjects, distanceThreshold) {
+            const originPosition = ghost.position.clone();
+            const positionAttribute = ghost.geometry.getAttribute('position');
+            for (let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex++) {
+                localVertex.fromBufferAttribute(positionAttribute, vertexIndex);
+                globalVertex.copy(localVertex).applyMatrix4(ghost.matrixWorld);
+                const directionVector = globalVertex.sub(ghost.position);
+                const ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
+                const collisionResults = ray.intersectObjects(targetObjects);
+                if (collisionResults.length > 0 && collisionResults[0].distance < distanceThreshold) {
+                    return collisionResults[0].object.name;
+                }
+            }
+            return null;
+        }
+
+        for (let i = 0; i < ghosts.length; i++) {
+            const collisionObjectName = performRaycast(ghosts[i], borders, 1);
+            if (collisionObjectName) {
+                if (collisionObjectName === "left" || collisionObjectName === "right") {
+                    stepXghosts[i] *= -1;
+                }
+                if (collisionObjectName === "down" || collisionObjectName === "top") {
+                    stepYghosts[i] *= -1;
+                }
+            }
+        }
+    }
+
+
+    function updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts) {
+        if (lives >= 0) {
+            sphere.position.x += stepX * direction.x;
+            sphere.position.y += stepY * direction.y;
+        }
+
+    }
+
+    function powerActivation(ghosts) {
+        const tiempoEspera = 10000;
+
+        if (!powerActive) {
+            powerActive = true;
+            for (var i = 0; i < ghosts.length; i++) {
+                ghosts[i].material = getScaredGhostMaterial();
+            }
+            setTimeout(function () {
+                powerActive = false;
+                for (var i = 0; i < ghosts.length; i++) {
+                    ghosts[i].material = getGhostMaterial();
+                }
+            }, tiempoEspera);
+        } else {
+            score += 0; // Incrementar el puntaje si la potencia ya está activada
+        }
+    }
+
+    function reset() {
+        document.getElementById("endGame").style.display = "none";
+        document.getElementById("lifeCount").innerHTML = "Lives: 3";
+        document.getElementById("scoreCount").innerText = "Your Score: 0";
+
+        // Eliminar el cuerpo del canvas completo
+        var canvas = document.querySelector("canvas");
+        if (canvas) {
+            canvas.parentNode.removeChild(canvas);
+        }
+
+        // Restablecer variables globales a su estado original
+        var initialState = {
+            score: 0,
+            powerActive: false,
+            lives: 3,
+            direction: { x: -1, y: 0 },
+            stepX: 0.4,
+            stepY: 0.4,
+            stepX_ghost1: 0.1,
+            stepY_ghost1: 0.2,
+            stepX_ghost2: 0.1,
+            stepY_ghost2: 0.2,
+            stepX_ghost3: 0.1,
+            stepY_ghost3: 0.2,
+        };
+
+        // Reinicializar variables globales a partir del estado inicial
+        Object.assign(window, initialState);
+
+        // Reinicializar la escena
+        init();
+    }
+
+    function generationPointsRow(scene, numSphere, spacing, rowY1, rowY2, positionX) {
+        var anchoTotal = (numSphere - 1) * spacing;
+        var posXIzquierda = positionX - anchoTotal / 2;
+
+        for (var i = 0; i < numSphere; i++) {
+            var posX = posXIzquierda + i * spacing;
+            var esfera = getSphere("score" + i, posX, rowY1, 1);
+            var esferaSuperior = getSphere("score" + i, posX, rowY2, 1);
+            esfera.scale.set(0.5, 0.5, 0.5);
+            esferaSuperior.scale.set(0.5, 0.5, 0.5);
+            scene.add(esfera);
+            scene.add(esferaSuperior);
+            scoreSpheres.push(esfera);
+            scoreSpheres.push(esferaSuperior);
+        }
+    }
+
+    function generationPointsColumn(scene, numSphere, spacing, columnX1, columnX12, positionY) {
+        var altoTotal = (numSphere - 1) * spacing;
+        var posYAbajo = positionY - altoTotal / 2;
+
+        for (var i = 0; i < numSphere; i++) {
+            var posY = posYAbajo + i * spacing;
+            var esfera = getSphere("score" + i, columnX1, posY, 1);
+            var esferaDerecha = getSphere("score" + i, columnX12, posY, 1);
+            esfera.scale.set(0.5, 0.5, 0.5);
+            esferaDerecha.scale.set(0.5, 0.5, 0.5);
+            scene.add(esfera);
+            scene.add(esferaDerecha);
+            scoreSpheres.push(esfera);
+            scoreSpheres.push(esferaDerecha);
+        }
+    }
+
+    function getSphere(n, x, y, z) {
+        var geometry = new THREE.SphereGeometry(1, 20, 20);
+        var material;
+        if (n == "sphere") {
+            material = new getPacManMaterial();
+        } else if (n == "ghost1") {
+            material = new getGhostMaterial();
+        } else if (n == "ghost2") {
+            material = new getGhostMaterial();
+        } else if (n == "ghost3") {
+            material = new getGhostMaterial();
+        } else if (n = "powerUp") {
+            geometry = new THREE.SphereGeometry(1.2, 20, 20);
+            material = new getPowerMaterial();
+        } else if (n = "score") {
+            material = new getPowerMaterial();
+        }
+
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.x = x;
+        mesh.position.y = y;
+        mesh.position.z = z;
+        mesh.castShadow = true;
+        mesh.name = n;
+
+        return mesh;
+    }
+
+    function getFloor() {
+        var geometry = new THREE.PlaneGeometry(50, 50);
+        var mesh = new THREE.Mesh(geometry, getFloorMaterial());
+        mesh.receiveShadow = true;
+
+        return mesh;
+    }
+
+    function getBorder(name, x, y, z, posX, posY, posZ) {
+        var geometry = new THREE.BoxGeometry(x, y, z);
+        var mesh = new THREE.Mesh(geometry, getWallMaterial());
+        mesh.receiveShadow = true;
+        mesh.position.set(posX, posY, posZ);
+        mesh.name = name;
+
+        return mesh;
+    }
+
+    function getPowerMaterial() {
+        var texture = new THREE.TextureLoader().load("power.jpg");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+    function getGhostMaterial() {
+        var texture = new THREE.TextureLoader().load("ghost.jpg");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+    function getScaredGhostMaterial() {
+        var texture = new THREE.TextureLoader().load("scaredGhost.jpg");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+    function getPacManMaterial() {
+        var texture = new THREE.TextureLoader().load("pacman.png");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+    function getFloorMaterial() {
+        var texture = new THREE.TextureLoader().load("suelo.jpg");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+    function getWallMaterial() {
+        var texture = new THREE.TextureLoader().load("paredes.jpg");
+        var material = new THREE.MeshPhysicalMaterial({
+            map: texture
+        });
+
+        return material;
+    }
+
+</script>
+
+</html>
